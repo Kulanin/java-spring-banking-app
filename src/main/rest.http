@@ -1,0 +1,54 @@
+### Test GET request
+GET http://localhost:8080/api/v1/users
+Content-Type: application/json
+
+### Test POST request
+POST http://localhost:8080/api/v1/users
+Content-Type: application/json
+
+{
+    "name": "Kulani",
+    "role": "Developer",
+    "email":"rhandzu@yahoo.com"
+}
+
+
+### Test Post request
+POST http://localhost:8080/api/accounts/user/11
+Content-Type: application/json
+Accept: application/json
+
+{
+    "accountType": "FIXED"
+}
+
+
+### Test Post request
+POST http://localhost:8080/api/accounts/user/1?accountNumber=12345&accountType=SAVINGS
+
+
+### Retrieve the account you just created
+GET http://localhost:8080/api/accounts/1
+
+### Retrieve the account you just created
+GET http://localhost:8080/api/accounts
+
+### Test Deposit
+POST http://localhost:8080/api/accounts/1/deposit?amount=500
+
+### Test Deposit
+POST http://localhost:8080/api/accounts/2/deposit?amount=500
+
+### Test Withdraw
+POST http://localhost:8080/api/accounts/1/withdraw?amount=200
+
+### Test tranfer
+POST http://localhost:8080/api/accounts/4/transfer
+Content-Type: application/json
+Accept: application/json
+Idempotency-Key: 7b9b1e5a-2b3c-4d5e-af6g-8h9i0j1k2l3m
+
+{
+  "targetAccountId": 2,
+  "amount": 500
+}
