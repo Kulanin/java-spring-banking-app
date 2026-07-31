@@ -1,4 +1,4 @@
-package com.demo.Transaction;
+package com.demo.transaction;
 
 public enum TransactionType {
     DEPOSIT,

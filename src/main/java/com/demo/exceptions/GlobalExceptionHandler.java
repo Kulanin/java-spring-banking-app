@@ -8,9 +8,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-import com.demo.Transaction.dto.TransactionResponse;
-import com.demo.Transaction.dto.TransactionStatus;
 import com.demo.common.ApiResponse;
+import com.demo.transaction.dto.TransactionResponse;
+import com.demo.transaction.dto.TransactionStatus;
 
 import jakarta.validation.ConstraintViolationException;
 

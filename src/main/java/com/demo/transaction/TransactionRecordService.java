@@ -1,4 +1,4 @@
-package com.demo.Transaction;
+package com.demo.transaction;
 
 import java.util.Optional;
 import org.springframework.stereotype.Service;

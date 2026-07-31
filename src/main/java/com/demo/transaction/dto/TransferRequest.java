@@ -1,4 +1,4 @@
-package com.demo.Transaction.dto;
+package com.demo.transaction.dto;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;

@@ -3,11 +3,11 @@ package com.demo.account;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.demo.Transaction.TransactionRecord;
-import com.demo.Transaction.TransactionRecordService;
-import com.demo.Transaction.TransactionType;
-import com.demo.Transaction.dto.TransactionResponse;
-import com.demo.Transaction.dto.TransactionStatus;
+import com.demo.transaction.TransactionRecord;
+import com.demo.transaction.TransactionRecordService;
+import com.demo.transaction.TransactionType;
+import com.demo.transaction.dto.TransactionResponse;
+import com.demo.transaction.dto.TransactionStatus;
 
 @Service
 public class TransferService {

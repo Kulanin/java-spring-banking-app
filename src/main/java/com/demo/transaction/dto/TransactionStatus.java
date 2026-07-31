@@ -1,4 +1,4 @@
-package com.demo.Transaction.dto;
+package com.demo.transaction.dto;
 
 public enum TransactionStatus {
     SUCCESS,

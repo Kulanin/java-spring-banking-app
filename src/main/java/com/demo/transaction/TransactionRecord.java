@@ -1,4 +1,4 @@
-package com.demo.Transaction;
+package com.demo.transaction;
 
 import java.time.LocalDateTime;
 
