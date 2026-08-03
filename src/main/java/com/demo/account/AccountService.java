@@ -1,6 +1,7 @@
 
 package com.demo.account;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -78,9 +79,10 @@ public class AccountService {
         }
         Account account = getAccount(accountId); // Reuse your helper method
         account.deposit(amount);
+        long balanceAfter = account.getBalance();
 
         TransactionRecord record = new TransactionRecord(
-                idempotencyKey, accountId, amount, TransactionType.DEPOSIT);
+                idempotencyKey, account, amount, TransactionType.DEPOSIT, balanceAfter, account.getAccountName());
 
         transactionRecordService.save(record);
 
@@ -98,9 +100,12 @@ public class AccountService {
 
         account.withdraw(amount);
 
+        long balanceAfter = account.getBalance();
+
         TransactionRecord record = new TransactionRecord(
-                idempotencyKey, accountId, amount, TransactionType.WITHDRAW);
+                idempotencyKey, account, amount, TransactionType.WITHDRAW, balanceAfter, account.getAccountName());
         transactionRecordService.save(record);
         return new TransactionResponse(TransactionStatus.SUCCESS, account.getBalance(), "Withdrawal successful");
     }
+
 }

@@ -2,13 +2,18 @@ package com.demo.transaction;
 
 import java.time.LocalDateTime;
 
+import com.demo.account.Account;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
@@ -23,24 +28,33 @@ public class TransactionRecord {
     @Column(unique = true, nullable = false)
     private String idempotencyKey;
 
-    private Long accountId;
+    // Only map the relationship object
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "account_id", nullable = false)
+    private Account account;
+
     private long amount;
+    private long balanceAfter;
 
     @Enumerated(EnumType.STRING)
     private TransactionType type;
 
     private LocalDateTime createdAt;
 
-    // Required No-args constructor
+    @Column(name = "account_name")
+    private String accountName;
+
     public TransactionRecord() {
     }
 
-    public TransactionRecord(String idempotencyKey, Long accountId, long amount, TransactionType type) {
+    public TransactionRecord(String idempotencyKey, Account account, long amount, TransactionType type,
+            long balanceAfter, String accountName) {
         this.idempotencyKey = idempotencyKey;
-        this.accountId = accountId;
+        this.account = account;
         this.amount = amount;
         this.type = type;
-
+        this.balanceAfter = balanceAfter;
+        this.accountName = accountName;
     }
 
     @PrePersist
@@ -48,9 +62,17 @@ public class TransactionRecord {
         createdAt = LocalDateTime.now();
     }
 
-    // Add these getters to your TransactionRecord class
+    public Long getId() {
+        return id;
+    }
+
+    // Safely pull the ID from the Account object
     public Long getAccountId() {
-        return accountId;
+        return account != null ? account.getId() : null;
+    }
+
+    public Account getAccount() {
+        return account;
     }
 
     public String getIdempotencyKey() {
@@ -69,4 +91,11 @@ public class TransactionRecord {
         return createdAt;
     }
 
+    public long getBalanceAfter() {
+        return balanceAfter;
+    }
+
+    public String getAccountName() {
+        return accountName != null ? accountName : (account != null ? account.getAccountName() : null);
+    }
 }

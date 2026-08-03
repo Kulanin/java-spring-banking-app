@@ -55,7 +55,7 @@ public class AccountResponseDto {
         return maturityDate;
     }
 
-    public String getAccountNamae() {
+    public String getAccountName() {
         return accountName;
     }
 

@@ -50,6 +50,8 @@ public abstract class Account implements Depositable {
 
     private String accountName;
 
+    private long balanceAfter;
+
     @Enumerated(EnumType.STRING)
     private AccountStatus status;
 
@@ -89,6 +91,10 @@ public abstract class Account implements Depositable {
 
     public void SetAccountName(String accountName) {
         this.accountName = accountName;
+    }
+
+    public long getBalancAfter() {
+        return balanceAfter;
     }
 
     @PrePersist

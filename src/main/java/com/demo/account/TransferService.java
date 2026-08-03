@@ -48,10 +48,10 @@ public class TransferService {
         targetAccount.deposit(amount);
 
         // Save transaction records for audit trails
-        TransactionRecord sourceRecord = new TransactionRecord(idempotencyKey + "-OUT", sourceAccountId, -amount,
-                TransactionType.TRANSFER);
-        TransactionRecord targetRecord = new TransactionRecord(idempotencyKey + "-IN", targetAccountId, amount,
-                TransactionType.TRANSFER);
+        TransactionRecord sourceRecord = new TransactionRecord(idempotencyKey + "-OUT", sourceAccount, -amount,
+                TransactionType.TRANSFER_OUT, sourceAccount.getBalance(), sourceAccount.getAccountName());
+        TransactionRecord targetRecord = new TransactionRecord(idempotencyKey + "-IN", targetAccount, amount,
+                TransactionType.TRANSFER_IN, targetAccount.getBalance(), targetAccount.getAccountName());
 
         transactionRecordService.save(sourceRecord);
         transactionRecordService.save(targetRecord);

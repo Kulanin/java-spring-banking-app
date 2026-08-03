@@ -10,7 +10,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.demo.account.dto.AccountSummaryDto;
 import com.demo.common.ApiResponse;
+import com.demo.user.dto.UserResponseDto;
 
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -24,12 +26,28 @@ public class UserController {
     private UserService userService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<User>>> getUsers() {
+    public ResponseEntity<ApiResponse<List<UserResponseDto>>> getUsers() {
 
         try {
             // use dto
             List<User> users = userService.findAll();
-            return ResponseEntity.ok(ApiResponse.success(users, "Users retrieved successfully"));
+
+            List<UserResponseDto> userDtos = users.stream().map(user -> new UserResponseDto(
+                    user.getId(),
+                    user.getEmail(),
+                    user.getName(),
+                    user.getAccounts().stream().map(account -> new AccountSummaryDto(
+                            account.getId(),
+                            account.getAccountNumber(),
+                            account.getAccountName(),
+                            account.getBalance(),
+                            account.getAccountType(),
+                            account.getStatus()
+
+                    )).toList()
+
+            )).toList();
+            return ResponseEntity.ok(ApiResponse.success(userDtos, "Users retrieved successfully"));
         } catch (Exception e) {
             log.error("Error retrieving users", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

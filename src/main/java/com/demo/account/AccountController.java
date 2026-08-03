@@ -16,7 +16,9 @@ import com.demo.account.dto.AccountCreationRequest;
 import com.demo.account.dto.AccountResponseDto;
 import com.demo.account.dto.TransactionRequest;
 import com.demo.common.ApiResponse;
+import com.demo.transaction.TransactionRecordService;
 import com.demo.transaction.dto.TransactionResponse;
+import com.demo.transaction.dto.TransactionStatementDto;
 import com.demo.transaction.dto.TransactionStatus;
 import com.demo.transaction.dto.TransferRequest;
 
@@ -31,10 +33,13 @@ public class AccountController {
 
     private final AccountService accountService;
     private final TransferService transferService;
+    private final TransactionRecordService transactionRecordService;
 
-    public AccountController(AccountService accountService, TransferService transferService) {
+    public AccountController(AccountService accountService, TransferService transferService,
+            TransactionRecordService transactionRecordService) {
         this.accountService = accountService;
         this.transferService = transferService;
+        this.transactionRecordService = transactionRecordService;
     }
 
     @PostMapping("/{accountId}/deposit")
@@ -102,6 +107,12 @@ public class AccountController {
         List<AccountResponseDto> responseDtos = accountService.findAll().stream().map(AccountResponseDto::fromEntity)
                 .toList();
         return ResponseEntity.ok(responseDtos);
+    }
+
+    @GetMapping("/statement/{accountId}")
+    public ResponseEntity<List<TransactionStatementDto>> getStatement(@PathVariable Long accountId) {
+        List<TransactionStatementDto> statementDtos = transactionRecordService.getStatement(accountId);
+        return ResponseEntity.ok(statementDtos);
     }
 
 }

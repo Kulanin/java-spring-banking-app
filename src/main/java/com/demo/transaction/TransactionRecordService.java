@@ -1,7 +1,12 @@
 package com.demo.transaction;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+
 import org.springframework.stereotype.Service;
+
+import com.demo.transaction.dto.TransactionStatementDto;
 
 import jakarta.transaction.Transactional;
 
@@ -25,6 +30,21 @@ public class TransactionRecordService {
 
     public Optional<TransactionRecord> findByIdempotencyKey(String key) {
         return transactionRecordRepository.findByIdempotencyKey(key);
+    }
+
+    @Transactional()
+    public List<TransactionStatementDto> getStatement(Long accountId) {
+        List<TransactionRecord> records = transactionRecordRepository.findByAccount_Id(accountId);
+
+        return records.stream()
+                .map(record -> new TransactionStatementDto(
+                        record.getAccountId(),
+                        record.getAmount(),
+                        record.getBalanceAfter(),
+                        record.getCreatedAt(),
+                        record.getType(),
+                        record.getAccountName()))
+                .collect(Collectors.toList());
     }
 
 }
