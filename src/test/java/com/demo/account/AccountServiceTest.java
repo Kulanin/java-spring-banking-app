@@ -1,4 +1,4 @@
-package com.demo;
+package com.demo.account;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -20,14 +20,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import com.demo.account.Account;
-import com.demo.account.AccountFactory;
-import com.demo.account.AccountRepository;
-import com.demo.account.AccountService;
-import com.demo.account.AccountStatus;
-import com.demo.account.AccountType;
-import com.demo.account.CheckingAccount;
 import com.demo.transaction.TransactionRecord;
 import com.demo.transaction.TransactionRecordService;
 import com.demo.transaction.dto.TransactionResponse;
