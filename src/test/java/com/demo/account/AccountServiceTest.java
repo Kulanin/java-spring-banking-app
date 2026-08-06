@@ -20,6 +20,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import com.demo.audit.AuditService;
 import com.demo.transaction.TransactionRecord;
 import com.demo.transaction.TransactionRecordService;
 import com.demo.transaction.dto.TransactionResponse;
@@ -44,6 +46,8 @@ public class AccountServiceTest {
 
     @InjectMocks
     private AccountService accountService;
+    @Mock
+    private AuditService auditService;
 
     @Test
     void createAccountForUser_Success() {
