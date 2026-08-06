@@ -1,11 +1,10 @@
 
 package com.demo.account;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import org.springframework.stereotype.Service;
-
+import com.demo.audit.AuditService;
 import com.demo.transaction.TransactionRecord;
 import com.demo.transaction.TransactionRecordService;
 import com.demo.transaction.TransactionType;
@@ -27,12 +26,16 @@ public class AccountService {
 
     final private AccountFactory accountFactory;
 
+    final private AuditService auditService;
+
     public AccountService(UserRepository userRepository, AccountRepository accountRepository,
-            TransactionRecordService transactionRecordService, AccountFactory accountFactory) {
+            TransactionRecordService transactionRecordService, AccountFactory accountFactory,
+            AuditService auditService) {
         this.userRepository = userRepository;
         this.accountRepository = accountRepository;
         this.transactionRecordService = transactionRecordService;
         this.accountFactory = accountFactory;
+        this.auditService = auditService;
     }
 
     @Transactional
@@ -58,6 +61,8 @@ public class AccountService {
 
         // 4. Save (CascadeType.ALL in User will automatically save the account)
         userRepository.save(user);
+        auditService.logAction("test-user-c", "CREATE-ACCOUNT",
+                "Account name : " + accountName + " created successfullly");
 
         return account;
     }
@@ -85,6 +90,8 @@ public class AccountService {
                 idempotencyKey, account, amount, TransactionType.DEPOSIT, balanceAfter, account.getAccountName());
 
         transactionRecordService.save(record);
+        auditService.logAction("test-user-d", "DEPOSIT",
+                "Successfully deposited " + amount + " into account ID: " + accountId);
 
         return new TransactionResponse(TransactionStatus.SUCCESS, account.getBalance(), "Deposit successful");
     }
@@ -105,6 +112,11 @@ public class AccountService {
         TransactionRecord record = new TransactionRecord(
                 idempotencyKey, account, amount, TransactionType.WITHDRAW, balanceAfter, account.getAccountName());
         transactionRecordService.save(record);
+
+        auditService.logAction(
+                "test-user-w",
+                "WITHDRAWAL",
+                "Successfully withdrew " + amount + " from account ID: " + accountId);
         return new TransactionResponse(TransactionStatus.SUCCESS, account.getBalance(), "Withdrawal successful");
     }
 

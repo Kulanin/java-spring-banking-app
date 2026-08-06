@@ -7,7 +7,7 @@ import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
-
+import com.demo.audit.AuditService;
 import com.demo.common.ApiResponse;
 import com.demo.transaction.dto.TransactionResponse;
 import com.demo.transaction.dto.TransactionStatus;
@@ -17,12 +17,20 @@ import jakarta.validation.ConstraintViolationException;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private final AuditService auditService;
+
+    public GlobalExceptionHandler(AuditService auditService) {
+        this.auditService = auditService;
+    }
+
     @ExceptionHandler(InsufficientFundsException.class)
     public ResponseEntity<TransactionResponse> handleInsufficientFunds(InsufficientFundsException ex) {
         TransactionResponse response = new TransactionResponse(
                 TransactionStatus.FAILED,
                 0,
                 ex.getMessage());
+
+        auditService.logAction("user-test", "WITHDRAWAL_FAILED", "Failed withdrawal attempt" + ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }

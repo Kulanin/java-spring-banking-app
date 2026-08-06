@@ -52,3 +52,7 @@ Idempotency-Key: 7b9b1e5a-2b3c-4d5e-af6g-8h9i0j1k2l3m
   "targetAccountId": 2,
   "amount": 500
 }
+
+### get statement
+GET http://localhost:8080/api/accounts/statement/2
+

@@ -3,6 +3,7 @@ package com.demo.account;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.demo.audit.AuditService;
 import com.demo.transaction.TransactionRecord;
 import com.demo.transaction.TransactionRecordService;
 import com.demo.transaction.TransactionType;
@@ -14,17 +15,20 @@ public class TransferService {
 
     private final TransactionRecordService transactionRecordService;
     private final AccountService accountService;
+    private final AuditService auditService;
 
-    public TransferService(TransactionRecordService transactionRecordService, AccountService accountService) {
+    public TransferService(TransactionRecordService transactionRecordService, AccountService accountService,
+            AuditService auditService) {
         this.transactionRecordService = transactionRecordService;
         this.accountService = accountService;
+        this.auditService = auditService;
     }
 
     @Transactional
     public TransactionResponse transfer(Long sourceAccountId, Long targetAccountId, long amount,
             String idempotencyKey) {
 
-        if (transactionRecordService.findByIdempotencyKey(idempotencyKey).isPresent()) {
+        if (transactionRecordService.findByIdempotencyKey(idempotencyKey + "-OUT").isPresent()) {
             return new TransactionResponse(TransactionStatus.ALREADY_PROCESSED, 0,
                     "This transfer was already completed");
         }
@@ -55,6 +59,8 @@ public class TransferService {
 
         transactionRecordService.save(sourceRecord);
         transactionRecordService.save(targetRecord);
+        auditService.logAction("test-user-t", "TRANSFER", "Funds transferred successfully " + amount
+                + " from account ID: " + sourceAccountId + " to account ID: " + targetAccountId);
 
         return new TransactionResponse(TransactionStatus.SUCCESS, sourceAccount.getBalance(), "Transfer successful");
     }
