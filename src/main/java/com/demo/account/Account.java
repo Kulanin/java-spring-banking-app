@@ -89,7 +89,7 @@ public abstract class Account implements Depositable {
         return accountName;
     }
 
-    public void SetAccountName(String accountName) {
+    public void setAccountName(String accountName) {
         this.accountName = accountName;
     }
 

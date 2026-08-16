@@ -16,8 +16,7 @@ import com.demo.transaction.TransactionType;
 import com.demo.transaction.dto.TransactionResponseDto;
 import com.demo.user.User;
 import com.demo.user.UserRepository;
-
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AccountService {
@@ -60,7 +59,7 @@ public class AccountService {
         account.setBalance(0L);
         account.setAccountType(accountType);
         account.setStatus(AccountStatus.ACTIVE);
-        account.SetAccountName(accountName);
+        account.setAccountName(accountName);
 
         user.addAccount(account);
 
