@@ -38,7 +38,7 @@ public class TransactionRecordService {
 
         return records.stream()
                 .map(record -> new TransactionStatementDto(
-                        record.getAccountId(),
+                        record.getId(),
                         record.getAmount(),
                         record.getBalanceAfter(),
                         record.getCreatedAt(),

@@ -1,9 +1,13 @@
 package com.demo.user;
 
-import java.util.List;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+
+import com.demo.user.dto.UserCreateDto;
+
 import jakarta.transaction.Transactional;
 
 @Service
@@ -13,11 +17,19 @@ public class UserService {
     @Autowired
     private UserRepository userRepository;
 
-    public List<User> findAll() {
-        return userRepository.findAll();
+    @Autowired
+    UserMapper userMapper;
+
+    public Page<User> findAll(Pageable pageable) {
+        return userRepository.findAll(pageable);
     }
 
-    public User save(User user) {
+    public User findByIdWithAccounts(Long id) {
+        return userRepository.findByIdWithAccounts(id);
+    }
+
+    public User save(UserCreateDto createDto) {
+        User user = userMapper.toEntity(createDto);
         return userRepository.save(user);
     }
 

@@ -6,24 +6,18 @@ import com.demo.account.AccountType;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-public class AccountCreationRequest {
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class AccountCreationRequestDto {
     @NotNull(message = "Account type is required")
     private AccountType accountType;
     private LocalDate maturityDate;
-
     @NotBlank(message = "Account name is required")
     private String accountName;
 
-    public AccountType getAccountType() {
-        return accountType;
-    }
-
-    public LocalDate getMaturityDate() {
-        return maturityDate;
-    }
-
-    public String getAccountName() {
-        return accountName;
-    }
 }

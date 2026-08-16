@@ -3,13 +3,14 @@ package com.demo.exceptions;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import com.demo.audit.AuditService;
 import com.demo.common.ApiResponse;
-import com.demo.transaction.dto.TransactionResponse;
+import com.demo.transaction.dto.TransactionResponseDto;
 import com.demo.transaction.dto.TransactionStatus;
 
 import jakarta.validation.ConstraintViolationException;
@@ -24,15 +25,15 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(InsufficientFundsException.class)
-    public ResponseEntity<TransactionResponse> handleInsufficientFunds(InsufficientFundsException ex) {
-        TransactionResponse response = new TransactionResponse(
-                TransactionStatus.FAILED,
-                0,
-                ex.getMessage());
+    public ResponseEntity<TransactionResponseDto> handleInsufficientFunds(InsufficientFundsException ex) {
+        TransactionResponseDto errorData = TransactionResponseDto.builder()
+                .status((TransactionStatus.FAILED))
+                .message(ex.getMessage())
+                .build();
 
         auditService.logAction("user-test", "WITHDRAWAL_FAILED", "Failed withdrawal attempt" + ex.getMessage());
 
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorData);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
@@ -41,23 +42,19 @@ public class GlobalExceptionHandler {
         String errorCode = "DATABASE_ERROR";
         HttpStatus status = HttpStatus.BAD_REQUEST;
 
-        // Extract the root SQL exception message
         String rootMessage = ex.getRootCause() != null ? ex.getRootCause().getMessage() : "";
 
-        // Check if the crash was caused by your unique email constraint
         if (rootMessage.contains("Duplicate entry") && rootMessage.contains("uc_user_email")) {
             errorMessage = "A user with this email already exists.";
             errorCode = "DUPLICATE_EMAIL";
             status = HttpStatus.CONFLICT; // 409 Conflict is ideal for duplicate entries
         }
-        // Check for foreign key failures (e.g., creating an account for a user ID that
-        // doesn't exist)
+
         else if (rootMessage.contains("a foreign key constraint fails")) {
             errorMessage = "The referenced parent record could not be found.";
             errorCode = "FOREIGN_KEY_VIOLATION";
         }
 
-        // Return your structured global API response layout
         return ResponseEntity.status(status)
                 .body(ApiResponse.error(errorMessage, errorCode));
     }
@@ -99,6 +96,16 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleUnsupportedException(UnsupportedOperationException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error(ex.getMessage(), null));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiResponse<Void>> handleValidationExceptions(
+            MethodArgumentNotValidException ex) {
+
+        String cleanErrorMessage = ex.getBindingResult().getAllErrors().get(0).getDefaultMessage();
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(cleanErrorMessage, "VALIDATION_ERROR"));
     }
 
     @ExceptionHandler(RuntimeException.class)

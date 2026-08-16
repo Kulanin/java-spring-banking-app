@@ -1,5 +1,9 @@
-### Test GET request
-GET http://localhost:8080/api/v1/users
+### Get all users
+GET http://localhost:8080/api/v1/users?page=0&size=10&sortBy=name&sortDirection=DESC
+Content-Type: application/json
+
+### Get all user details
+GET http://localhost:8080/api/v1/users/1
 Content-Type: application/json
 
 ### Test POST request
@@ -14,7 +18,7 @@ Content-Type: application/json
 
 
 ### Test Post request
-POST http://localhost:8080/api/accounts/user/11
+POST http://localhost:8080/api/v1/accounts/user/11
 Content-Type: application/json
 Accept: application/json
 
@@ -24,33 +28,45 @@ Accept: application/json
 
 
 ### Test Post request
-POST http://localhost:8080/api/accounts/user/1?accountNumber=12345&accountType=SAVINGS
+POST http://localhost:8080/api/v1/accounts/user/1?accountNumber=12345&accountType=SAVINGS
 
 
 ### Retrieve the account you just created
-GET http://localhost:8080/api/accounts/1
+GET http://localhost:8080/api/v1/accounts/1
 
 ### Retrieve the account you just created
-GET http://localhost:8080/api/accounts
+GET http://localhost:8080/api/v1/accounts
 
 ### Test Deposit
-POST http://localhost:8080/api/accounts/1/deposit?amount=500
-
-### Test Deposit
-POST http://localhost:8080/api/accounts/2/deposit?amount=500
-
-### Test Withdraw
-POST http://localhost:8080/api/accounts/1/withdraw?amount=200
-
-### Test tranfer
-POST http://localhost:8080/api/accounts/4/transfer
+POST http://localhost:8080/api/v1/accounts/1/deposit
 Content-Type: application/json
 Accept: application/json
-Idempotency-Key: 7b9b1e5a-2b3c-4d5e-af6g-8h9i0j1k2l3m
+Idempotency-Key: 7b9b1e5a-2b3c-4d5e-af6g-kkkk1
 
 {
-  "targetAccountId": 2,
-  "amount": 500
+    "amount": 500
+}
+
+
+### Test Withdraw
+POST http://localhost:8080/api/v1/accounts/1/withdraw
+Content-Type: application/json
+Accept: application/json
+Idempotency-Key: 7b9b1e5a-2b3c-4d5e-af6g-eddw
+
+{
+    "amount": 100
+}
+
+### Test tranfer
+POST http://localhost:8080/api/v1/accounts/2/transfer
+Content-Type: application/json
+Accept: application/json
+Idempotency-Key: 7b9b1e5a-2b3c-4d5e-af6g-ouuuttt
+
+{
+  "targetAccountId": 3,
+  "amount": 100
 }
 
 ### get statement

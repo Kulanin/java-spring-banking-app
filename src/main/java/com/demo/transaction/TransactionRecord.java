@@ -16,8 +16,16 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 @Table(name = "transactions")
 public class TransactionRecord {
 
@@ -44,55 +52,9 @@ public class TransactionRecord {
     @Column(name = "account_name")
     private String accountName;
 
-    public TransactionRecord() {
-    }
-
-    public TransactionRecord(String idempotencyKey, Account account, long amount, TransactionType type,
-            long balanceAfter, String accountName) {
-        this.idempotencyKey = idempotencyKey;
-        this.account = account;
-        this.amount = amount;
-        this.type = type;
-        this.balanceAfter = balanceAfter;
-        this.accountName = accountName;
-    }
-
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    // Safely pull the ID from the Account object
-    public Long getAccountId() {
-        return account != null ? account.getId() : null;
-    }
-
-    public Account getAccount() {
-        return account;
-    }
-
-    public String getIdempotencyKey() {
-        return idempotencyKey;
-    }
-
-    public long getAmount() {
-        return amount;
-    }
-
-    public TransactionType getType() {
-        return type;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public long getBalanceAfter() {
-        return balanceAfter;
     }
 
     public String getAccountName() {

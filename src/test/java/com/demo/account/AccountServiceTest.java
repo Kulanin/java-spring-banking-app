@@ -24,7 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.demo.audit.AuditService;
 import com.demo.transaction.TransactionRecord;
 import com.demo.transaction.TransactionRecordService;
-import com.demo.transaction.dto.TransactionResponse;
+import com.demo.transaction.dto.TransactionResponseDto;
 import com.demo.transaction.dto.TransactionStatus;
 import com.demo.user.User;
 import com.demo.user.UserRepository;
@@ -132,11 +132,11 @@ public class AccountServiceTest {
         when(accountRepository.findById(accountId)).thenReturn(Optional.of(mockAccount));
 
         // Act
-        TransactionResponse response = accountService.deposit(accountId, depositAmount, idempotencyKey);
+        TransactionResponseDto response = accountService.deposit(accountId, depositAmount, idempotencyKey);
 
         // Assert
         assertEquals(TransactionStatus.SUCCESS, response.getStatus());
-        assertEquals(1500L, response.getNewBalance());
+        assertEquals(1500L, response.getBalanceAfter());
         assertEquals("Deposit successful", response.getMessage());
 
         verify(transactionRecordService, times(1)).save(any(TransactionRecord.class));
@@ -147,12 +147,13 @@ public class AccountServiceTest {
     void deposit_AlreadyProcessed_ReturnsIdempotentResponse() {
 
         String idempotencyKey = "key-duplicate";
-        TransactionRecord existingRecord = new TransactionRecord();
+        TransactionRecord existingRecord = new TransactionRecord(null, idempotencyKey, null, 0, 0, null, null,
+                idempotencyKey);
 
         when(transactionRecordService.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.of(existingRecord));
 
         // Act
-        TransactionResponse response = accountService.deposit(1L, 500, idempotencyKey);
+        TransactionResponseDto response = accountService.deposit(1L, 500, idempotencyKey);
 
         // Assert
         assertEquals(TransactionStatus.ALREADY_PROCESSED, response.getStatus());
@@ -179,11 +180,11 @@ public class AccountServiceTest {
         when(accountRepository.findById(accountId)).thenReturn(Optional.of(mockAccount));
 
         // Act
-        TransactionResponse response = accountService.withdraw(accountId, withdrawAmount, idempotencyKey);
+        TransactionResponseDto response = accountService.withdraw(accountId, withdrawAmount, idempotencyKey);
 
         // Assert
         assertEquals(TransactionStatus.SUCCESS, response.getStatus());
-        assertEquals(800L, response.getNewBalance());
+        assertEquals(800L, response.getBalanceAfter());
         assertEquals("Withdrawal successful", response.getMessage());
 
         verify(transactionRecordService, times(1)).save(any(TransactionRecord.class));
