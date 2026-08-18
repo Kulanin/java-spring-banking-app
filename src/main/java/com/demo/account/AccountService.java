@@ -89,7 +89,7 @@ public class AccountService {
                     "Successfully deposited " + amount + " into account ID: " + accountId);
             return transactionMapper.toDuplicateResponse(existing);
         }
-        Account account = getAccount(accountId); // Reuse your helper method
+        Account account = getAccount(accountId);
         account.deposit(amount);
 
         TransactionRecord record = transactionMapper.toEntity(
