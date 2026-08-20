@@ -18,14 +18,18 @@ import lombok.NoArgsConstructor;
 public class PageRequestDto {
 
     @Min(value = 0, message = "Page number must be at least 0")
+    @Builder.Default
     private int page = 0;
 
     @Min(value = 1, message = "Page size must be at least 1")
     @Max(value = 100, message = "Page size must not exeed 100")
+    @Builder.Default
     private int size = 5;
 
+    @Builder.Default
     private String sortBy = "id";
 
+    @Builder.Default
     private Sort.Direction sortDirection = Sort.Direction.ASC;
 
     public Pageable toPageable() {
