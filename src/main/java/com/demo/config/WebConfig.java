@@ -9,9 +9,11 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**") // Apply to all API endpoints
-                .allowedOrigins("http://localhost:3000") // Allow your React app
+                .allowedOrigins("http://localhost:5175/", "http://localhost:5173",
+                        "https://banking-simulator-xq4p.onrender.com") // Allow your React app
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH") // Allowed verbs
-                .allowedHeaders("*"); // Allow all headers
+                .allowedHeaders("*") // Allow all headers
+                .allowCredentials(true);
     }
 
 }

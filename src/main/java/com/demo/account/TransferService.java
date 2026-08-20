@@ -72,7 +72,7 @@ public class TransferService {
 
                 TransactionRecord targetRecord = transactionMapper.toEntity(
                                 new TransactionRequestDto(amount),
-                                sourceAccount,
+                                targetAccount,
                                 idempotencyKey + "-IN",
                                 TransactionType.TRANSFER_IN);
 
