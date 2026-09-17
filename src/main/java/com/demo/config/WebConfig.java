@@ -12,7 +12,8 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowedOrigins(
                         "http://localhost:5175",
                         "http://localhost:5173",
-                        "https://banking-simulator-x4qp.onrender.com",
+                        "http://localhost:5174",
+                        "https://banking-simulator-xq4p.onrender.com",
                         "https://bank-simulator-app.onrender.com")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
                 .allowedHeaders("*")

@@ -31,7 +31,7 @@ public class User {
     @NotBlank(message = "Name is required")
     private String name;
 
-    @Column(unique = true, nullable = false) //// Ensures MySQL creates a UNIQUE index
+    @Column(unique = true, nullable = false)
     @Email(message = "Invalid email format")
     @NotBlank(message = "Email is required")
     private String email;

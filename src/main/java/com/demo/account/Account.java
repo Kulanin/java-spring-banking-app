@@ -1,8 +1,10 @@
 package com.demo.account;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
 
+import com.demo.exceptions.InvalidAmountException;
 import com.demo.user.User;
 
 import jakarta.persistence.Column;
@@ -11,6 +13,7 @@ import jakarta.persistence.DiscriminatorType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Inheritance;
@@ -19,25 +22,33 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import jakarta.persistence.Version;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import jakarta.persistence.GenerationType;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 
 @Entity
+@Getter
+@Setter
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@ToString(exclude = "user")
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
 @DiscriminatorColumn(name = "account_type", discriminatorType = DiscriminatorType.STRING)
 @Table(name = "accounts")
-@Data
 @NoArgsConstructor
-@AllArgsConstructor
 
 public abstract class Account implements Depositable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Version
+    private Long version;
 
     @Column(unique = true)
     private String accountNumber;
@@ -59,13 +70,15 @@ public abstract class Account implements Depositable {
     private LocalDateTime updatedAt;
 
     // Reference to user feature
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     @JsonBackReference
     private User user;
 
     @Override
     public void deposit(long amount) {
+        if (amount <= 0)
+            throw new InvalidAmountException("Invalid amount :" + amount);
         this.balance += amount;
         this.updatedAt = LocalDateTime.now();
     }
@@ -74,33 +87,16 @@ public abstract class Account implements Depositable {
         throw new UnsupportedOperationException("Withdrawals are not supported for this account type.");
     }
 
-    // @Override
-    public long getBalance() {
-        return this.balance;
-    }
-
-    // Example generator method
     public String generateAccountNumber() {
         return "ACC-" + LocalDateTime.now().getYear() +
                 "-" + String.format("%06d", (long) (Math.random() * 1000000));
     }
 
-    public String getAccountName() {
-        return accountName;
-    }
-
-    public void setAccountName(String accountName) {
-        this.accountName = accountName;
-    }
-
-    public long getBalancAfter() {
-        return balanceAfter;
-    }
-
     @PrePersist
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
+        this.createdAt = now;
+        this.updatedAt = now;
 
         if (this.accountNumber == null) {
             this.accountNumber = generateAccountNumber();

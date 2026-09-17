@@ -1,6 +1,8 @@
 package com.demo.account;
 
 import java.util.List;
+import java.util.Map;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -25,6 +27,16 @@ import com.demo.transaction.dto.TransferRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
+
+/**
+ * REST controller for account operations.
+ *
+ * <p>
+ * <strong>Security note:</strong> authentication and authorization are
+ * intentionally NOT enforced in this demo build so that any frontend can
+ * exercise the endpoints freely. See {@code SECURITY.md} for the planned
+ * hardening. Do not expose this build publicly.
+ */
 
 @RestController
 @RequestMapping("/api/v1/accounts")
@@ -60,8 +72,8 @@ public class AccountController {
 
     @PostMapping("/{accountId}/withdraw")
     public ResponseEntity<ApiResponse<TransactionResponseDto>> withdraw(
-            @PathVariable Long accountId,
-            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @PathVariable @Positive Long accountId,
+            @RequestHeader("Idempotency-Key") @NotBlank String idempotencyKey,
             @RequestBody TransactionRequestDto request) {
 
         TransactionResponseDto response = accountService.withdraw(accountId, request.getAmount(), idempotencyKey);
@@ -76,8 +88,8 @@ public class AccountController {
 
     @PostMapping("/{accountId}/transfer")
     public ResponseEntity<ApiResponse<TransactionResponseDto>> transfer(
-            @PathVariable Long accountId,
-            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @PathVariable @Positive Long accountId,
+            @RequestHeader("Idempotency-Key") @NotBlank String idempotencyKey,
             @Valid @RequestBody TransferRequest request) {
 
         TransactionResponseDto response = transferService.transfer(
@@ -90,17 +102,18 @@ public class AccountController {
     }
 
     @PostMapping("/user/{userId}")
-    public ResponseEntity<ApiResponse<Account>> createAccount(@PathVariable Long userId,
+    public ResponseEntity<ApiResponse<AccountResponseDto>> createAccount(@PathVariable Long userId,
             @Valid @RequestBody AccountCreationRequestDto request) {
         Account newAccount = accountService.createAccountForUser(userId, request.getAccountType(),
                 request.getMaturityDate(), request.getAccountName());
+        AccountResponseDto accountResponseDto = accountMapper.toResponseDto(newAccount);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(newAccount, "Account created successfully"));
+                .body(ApiResponse.success(accountResponseDto, "Account created successfully"));
 
     }
 
     @GetMapping("/{accountId}")
-    public ResponseEntity<ApiResponse<AccountResponseDto>> geAccount(@PathVariable Long accountId) {
+    public ResponseEntity<ApiResponse<AccountResponseDto>> getAccount(@PathVariable Long accountId) {
         Account account = accountService.getAccount(accountId);
         AccountResponseDto accountResponseDto = accountMapper.toResponseDto(account);
         return ResponseEntity.ok(ApiResponse.success(accountResponseDto, "Account retrieved successully"));
@@ -118,5 +131,19 @@ public class AccountController {
         List<TransactionStatementDto> statementDtos = transactionRecordService.getStatement(accountId);
         return ResponseEntity.ok(ApiResponse.success(statementDtos, "Statement retrieved successfully"));
     }
+
+    @GetMapping("/download/{accountId}")
+    public ResponseEntity<Map<String, Object>> downloadStatement(@PathVariable Long accountId) {
+        // Not production ready yet and i will review it
+        Map<String, Object> response = this.accountService.generateStatement(accountId);
+
+        return ResponseEntity.accepted().body(response);
+
+    }
+
+    // @GetMapping("/jobs/{jobId}")
+    // public ResponseEntity<JobStatusDto> jobStatus(@PathVariable UUID jobId) {
+    // return ResponseEntity.ok(accountService.getStatus(jobId));
+    // }
 
 }

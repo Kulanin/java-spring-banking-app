@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import com.demo.user.dto.UserCreateDto;
+import com.demo.user.dto.UserDetailResponseDto;
 
 import jakarta.transaction.Transactional;
 
@@ -24,8 +25,9 @@ public class UserService {
         return userRepository.findAll(pageable);
     }
 
-    public User findByIdWithAccounts(Long id) {
-        return userRepository.findByIdWithAccounts(id);
+    public UserDetailResponseDto findByIdWithAccounts(Long id) {
+        User user = userRepository.findByIdWithAccounts(id);
+        return this.userMapper.toDetailDto(user);
     }
 
     public User save(UserCreateDto createDto) {

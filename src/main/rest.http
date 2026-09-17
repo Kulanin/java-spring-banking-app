@@ -70,5 +70,8 @@ Idempotency-Key: 7b9b1e5a-2b3c-4d5e-af6g-ouuuttt
 }
 
 ### get statement
-GET http://localhost:8080/api/accounts/statement/2
+GET http://localhost:8080/api/v1/accounts/statement/2
+
+### download statement
+GET http://localhost:8080/v1/api/accounts/download/2
 

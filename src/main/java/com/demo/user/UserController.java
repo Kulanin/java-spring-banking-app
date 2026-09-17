@@ -50,9 +50,8 @@ public class UserController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<UserDetailResponseDto>> getUserById(@PathVariable Long id) {
-        User user = userService.findByIdWithAccounts(id);
-        UserDetailResponseDto userDto = userMapper.toDetailDto(user);
-        return ResponseEntity.ok(ApiResponse.success(userDto, "User retrieved successfully"));
+        UserDetailResponseDto user = userService.findByIdWithAccounts(id);
+        return ResponseEntity.ok(ApiResponse.success(user, "User retrieved successfully"));
     }
 
 }
