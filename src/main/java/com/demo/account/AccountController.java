@@ -103,8 +103,9 @@ public class AccountController {
 
     @PostMapping("/user/{userId}")
     public ResponseEntity<ApiResponse<AccountResponseDto>> createAccount(@PathVariable Long userId,
+            @RequestHeader("Idempotency-Key") @NotBlank String idempotencyKey,
             @Valid @RequestBody AccountCreationRequestDto request) {
-        Account newAccount = accountService.createAccountForUser(userId, request.getAccountType(),
+        Account newAccount = accountService.createAccountForUser(idempotencyKey, userId, request.getAccountType(),
                 request.getMaturityDate(), request.getAccountName());
         AccountResponseDto accountResponseDto = accountMapper.toResponseDto(newAccount);
         return ResponseEntity.status(HttpStatus.CREATED)

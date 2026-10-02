@@ -16,9 +16,18 @@ public class AuditService {
 
     }
 
+    public boolean isAlreadyProcessed(String eventId) {
+        return auditRepository.existsByEventId(eventId);
+    }
+
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void logAction(String username, String action, String details) {
+    public void logAction(String eventId, String username, String action, String details) {
+
+        if (auditRepository.existsByEventId(eventId)) {
+            return; // already processed
+        }
         AuditLog log = new AuditLog();
+        log.setEventId(eventId);
         log.setUsername(username);
         log.setAction(action);
         log.setDetails(details);

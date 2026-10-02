@@ -31,7 +31,7 @@ public class GlobalExceptionHandler {
                 .message(ex.getMessage())
                 .build();
 
-        auditService.logAction("user-test", "WITHDRAWAL_FAILED", "Failed withdrawal attempt" + ex.getMessage());
+        auditService.logAction("", "user-test", "WITHDRAWAL_FAILED", "Failed withdrawal attempt" + ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorData);
     }

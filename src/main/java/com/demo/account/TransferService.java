@@ -39,7 +39,7 @@ public class TransferService {
                 if (existingTransaction.isPresent()) {
 
                         TransactionRecord existing = existingTransaction.get();
-                        auditService.logAction("test-user-t", "TRANSFER",
+                        auditService.logAction(idempotencyKey, "test-user-t", "TRANSFER",
                                         "Funds alaredy transferred successfully " + amount
                                                         + " from account ID: " + sourceAccountId + " to account ID: "
                                                         + targetAccountId);
@@ -78,8 +78,10 @@ public class TransferService {
 
                 transactionRecordService.save(sourceRecord);
                 transactionRecordService.save(targetRecord);
-                auditService.logAction("test-user-t", "TRANSFER", "Funds transferred successfully " + amount
-                                + " from account ID: " + sourceAccountId + " to account ID: " + targetAccountId);
+                auditService.logAction(idempotencyKey, "test-user-t", "TRANSFER",
+                                "Funds transferred successfully " + amount
+                                                + " from account ID: " + sourceAccountId + " to account ID: "
+                                                + targetAccountId);
 
                 return transactionMapper.toResponseDto(sourceRecord, "Funds transferred successfully");
 

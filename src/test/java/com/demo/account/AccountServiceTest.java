@@ -25,6 +25,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.demo.account.dto.TransactionRequestDto;
 import com.demo.audit.AuditService;
+import com.demo.outbox.OutboxEventRepository;
 import com.demo.transaction.TransactionMapper;
 import com.demo.transaction.TransactionRecord;
 import com.demo.transaction.TransactionRecordService;
@@ -33,204 +34,220 @@ import com.demo.transaction.dto.TransactionResponseDto;
 import com.demo.transaction.dto.TransactionStatus;
 import com.demo.user.User;
 import com.demo.user.UserRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @ExtendWith(MockitoExtension.class)
 public class AccountServiceTest {
 
-    @Mock
-    private UserRepository userRepository;
+        @Mock
+        private UserRepository userRepository;
 
-    @Mock
-    private AccountRepository accountRepository;
+        @Mock
+        private AccountRepository accountRepository;
 
-    @Mock
-    private TransactionRecordService transactionRecordService;
+        @Mock
+        private TransactionRecordService transactionRecordService;
 
-    @Mock
-    private AccountFactory accountFactory;
+        @Mock
+        private AccountFactory accountFactory;
 
-    @InjectMocks
-    private AccountService accountService;
-    @Mock
-    private AuditService auditService;
+        @InjectMocks
+        private AccountService accountService;
+        @Mock
+        private AuditService auditService;
 
-    @Mock
-    private TransactionMapper transactionMapper;
+        @Mock
+        private TransactionMapper transactionMapper;
 
-    @Test
-    void createAccountForUser_Success() {
-        // Arrange
-        Long userId = 1L;
-        String accountName = "Holiday Savings";
-        AccountType type = AccountType.CHECKING;
-        LocalDate maturityDate = null;
+        @Mock
+        private OutboxEventRepository outboxEventRepository;
 
-        User mockUser = new User();
-        mockUser.setId(userId);
+        @Mock
+        private final ObjectMapper objectMapper = new ObjectMapper();
 
-        Account mockAccount = new CheckingAccount();
+        @Test
+        void createAccountForUser_Success() {
+                // Arrange
+                Long userId = 1L;
+                String idempotencyKey = "123";
+                String accountName = "Holiday Savings";
+                AccountType type = AccountType.CHECKING;
+                LocalDate maturityDate = null;
 
-        when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
-        when(accountRepository.existsByUserIdAndAccountName(userId, accountName)).thenReturn(false);
-        when(accountFactory.createAccount(type, maturityDate)).thenReturn(mockAccount);
-        when(userRepository.save(any(User.class))).thenReturn(mockUser);
+                User mockUser = new User();
+                mockUser.setId(userId);
 
-        // Act
-        Account result = accountService.createAccountForUser(userId, type, maturityDate, accountName);
+                Account mockAccount = new CheckingAccount();
 
-        // Assert
-        assertNotNull(result);
-        assertEquals(accountName, result.getAccountName());
-        assertEquals(AccountStatus.ACTIVE, result.getStatus());
-        assertEquals(0L, result.getBalance());
+                when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
+                when(accountRepository.existsByUserIdAndAccountName(userId, accountName)).thenReturn(false);
+                when(accountFactory.createAccount(type, maturityDate)).thenReturn(mockAccount);
+                when(userRepository.save(any(User.class))).thenReturn(mockUser);
 
-        verify(userRepository, times(1)).findById(userId);
-        verify(accountRepository, times(1)).existsByUserIdAndAccountName(userId, accountName);
-        verify(accountFactory, times(1)).createAccount(type, maturityDate);
-        verify(userRepository, times(1)).save(mockUser);
+                // Act
+                Account result = accountService.createAccountForUser(idempotencyKey, userId, type, maturityDate,
+                                accountName);
 
-    }
+                // Assert
+                assertNotNull(result);
+                assertEquals(accountName, result.getAccountName());
+                assertEquals(AccountStatus.ACTIVE, result.getStatus());
+                assertEquals(0L, result.getBalance());
 
-    @Test
-    void createAccountForUser_UserNotFound_ThrowsException() {
+                verify(userRepository, times(1)).findById(userId);
+                verify(accountRepository, times(1)).existsByUserIdAndAccountName(userId, accountName);
+                verify(accountFactory, times(1)).createAccount(type, maturityDate);
+                verify(userRepository, times(1)).save(mockUser);
 
-        Long userId = 99L;
-        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+        }
 
-        RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> accountService.createAccountForUser(userId, AccountType.CHECKING, null, null));
+        @Test
+        void createAccountForUser_UserNotFound_ThrowsException() {
 
-        assertEquals("User not found", exception.getMessage());
-        verify(userRepository, times(1)).findById(userId);
-        verifyNoMoreInteractions(accountFactory, accountRepository);
-    }
+                String idempotencyKey = "123";
+                Long userId = 99L;
+                when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
-    @Test
-    void createAccountForUser_DuplicateName_ThrowsException() {
+                RuntimeException exception = assertThrows(RuntimeException.class,
+                                () -> accountService.createAccountForUser(idempotencyKey, userId, AccountType.CHECKING,
+                                                null, null));
 
-        Long userId = 1L;
-        String accountName = "Main";
-        User mockUser = new User();
+                assertEquals("User not found", exception.getMessage());
+                verify(userRepository, times(1)).findById(userId);
+                verifyNoMoreInteractions(accountFactory, accountRepository);
+        }
 
-        when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
-        when(accountRepository.existsByUserIdAndAccountName(userId, accountName)).thenReturn(true);
+        @Test
+        void createAccountForUser_DuplicateName_ThrowsException() {
+                String idempotencyKey = "123";
+                Long userId = 1L;
+                String accountName = "Main";
+                User mockUser = new User();
 
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> accountService.createAccountForUser(userId, AccountType.CHECKING, null, accountName));
+                when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
+                when(accountRepository.existsByUserIdAndAccountName(userId, accountName)).thenReturn(true);
 
-        assertTrue(exception.getMessage().contains("already exists"));
-        verify(accountRepository, times(1)).existsByUserIdAndAccountName(userId, accountName);
-        verifyNoInteractions(accountFactory);
+                IllegalArgumentException exception = assertThrows(
+                                IllegalArgumentException.class,
+                                () -> accountService.createAccountForUser(idempotencyKey, userId, AccountType.CHECKING,
+                                                null,
+                                                accountName));
 
-    }
+                assertTrue(exception.getMessage().contains("already exists"));
+                verify(accountRepository, times(1)).existsByUserIdAndAccountName(userId, accountName);
+                verifyNoInteractions(accountFactory);
 
-    @Test
-    void deposit_Success() {
-        Long accountId = 1L;
-        long depositAmount = 500L;
-        String idempotencyKey = "key-123";
+        }
 
-        Account mockAccount = new CheckingAccount();
-        mockAccount.setId(accountId);
-        mockAccount.setBalance(1000L);
-        mockAccount.setAccountType(AccountType.CHECKING);
+        @Test
+        void deposit_Success() {
+                Long accountId = 1L;
+                long depositAmount = 500L;
+                String idempotencyKey = "key-123";
 
-        when(transactionRecordService.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
-        when(accountRepository.findById(accountId)).thenReturn(Optional.of(mockAccount));
+                Account mockAccount = new CheckingAccount();
+                mockAccount.setId(accountId);
+                mockAccount.setBalance(1000L);
+                mockAccount.setAccountType(AccountType.CHECKING);
 
-        TransactionRecord mockRecord = new TransactionRecord();
-        when(transactionMapper.toEntity(any(TransactionRequestDto.class), any(Account.class), eq(idempotencyKey),
-                eq(TransactionType.DEPOSIT)))
-                .thenReturn(mockRecord);
+                when(transactionRecordService.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
+                when(accountRepository.findById(accountId)).thenReturn(Optional.of(mockAccount));
 
-        TransactionResponseDto mockResponse = new TransactionResponseDto();
-        mockResponse.setStatus(TransactionStatus.SUCCESS);
-        mockResponse.setBalanceAfter(1500L);
-        mockResponse.setMessage("Deposit successful");
+                TransactionRecord mockRecord = new TransactionRecord();
+                when(transactionMapper.toEntity(any(TransactionRequestDto.class), any(Account.class),
+                                eq(idempotencyKey),
+                                eq(TransactionType.DEPOSIT)))
+                                .thenReturn(mockRecord);
 
-        when(transactionMapper.toResponseDto(any(TransactionRecord.class), anyString()))
-                .thenReturn(mockResponse);
+                TransactionResponseDto mockResponse = new TransactionResponseDto();
+                mockResponse.setStatus(TransactionStatus.SUCCESS);
+                mockResponse.setBalanceAfter(1500L);
+                mockResponse.setMessage("Deposit successful");
 
-        // Act
-        TransactionResponseDto response = accountService.deposit(accountId, depositAmount, idempotencyKey);
+                when(transactionMapper.toResponseDto(any(TransactionRecord.class), anyString()))
+                                .thenReturn(mockResponse);
 
-        // Assert
-        assertEquals(TransactionStatus.SUCCESS, response.getStatus());
-        assertEquals(1500L, response.getBalanceAfter());
-        assertEquals("Deposit successful", response.getMessage());
+                // Act
+                TransactionResponseDto response = accountService.deposit(accountId, depositAmount, idempotencyKey);
 
-        verify(transactionRecordService, times(1)).save(any(TransactionRecord.class));
+                // Assert
+                assertEquals(TransactionStatus.SUCCESS, response.getStatus());
+                assertEquals(1500L, response.getBalanceAfter());
+                assertEquals("Deposit successful", response.getMessage());
 
-    }
+                verify(transactionRecordService, times(1)).save(any(TransactionRecord.class));
 
-    @Test
-    void deposit_AlreadyProcessed_ReturnsIdempotentResponse() {
+        }
 
-        String idempotencyKey = "key-duplicate";
-        TransactionRecord existingRecord = new TransactionRecord(null, idempotencyKey, null, 0, 0, null, null,
-                idempotencyKey);
+        @Test
+        void deposit_AlreadyProcessed_ReturnsIdempotentResponse() {
 
-        when(transactionRecordService.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.of(existingRecord));
+                String idempotencyKey = "key-duplicate";
+                TransactionRecord existingRecord = new TransactionRecord(null, idempotencyKey, null, 0, 0, null, null,
+                                idempotencyKey);
 
-        TransactionResponseDto mockResponse = new TransactionResponseDto();
-        mockResponse.setStatus(TransactionStatus.ALREADY_PROCESSED);
-        mockResponse.setBalanceAfter(1500L);
-        mockResponse.setMessage("This transaction was already completed");
+                when(transactionRecordService.findByIdempotencyKey(idempotencyKey))
+                                .thenReturn(Optional.of(existingRecord));
 
-        when(transactionMapper.toDuplicateResponse(any(TransactionRecord.class)))
-                .thenReturn(mockResponse);
+                TransactionResponseDto mockResponse = new TransactionResponseDto();
+                mockResponse.setStatus(TransactionStatus.ALREADY_PROCESSED);
+                mockResponse.setBalanceAfter(1500L);
+                mockResponse.setMessage("This transaction was already completed");
 
-        // Act
-        TransactionResponseDto response = accountService.deposit(1L, 500, idempotencyKey);
+                when(transactionMapper.toDuplicateResponse(any(TransactionRecord.class)))
+                                .thenReturn(mockResponse);
 
-        // Assert
-        assertEquals(TransactionStatus.ALREADY_PROCESSED, response.getStatus());
-        assertEquals("This transaction was already completed", response.getMessage());
+                // Act
+                TransactionResponseDto response = accountService.deposit(1L, 500, idempotencyKey);
 
-        // Ensure deposit never touches account repo or modifies balance
-        verifyNoInteractions(accountRepository);
-        verify(transactionRecordService, never()).save(any());
-    }
+                // Assert
+                assertEquals(TransactionStatus.ALREADY_PROCESSED, response.getStatus());
+                assertEquals("This transaction was already completed", response.getMessage());
 
-    @Test
-    void withdraw_Success() {
-        // Arrange
-        Long accountId = 1L;
-        long withdrawAmount = 200L;
-        String idempotencyKey = "key-withdraw";
+                // Ensure deposit never touches account repo or modifies balance
+                verifyNoInteractions(accountRepository);
+                verify(transactionRecordService, never()).save(any());
+        }
 
-        Account mockAccount = new CheckingAccount();
-        mockAccount.setId(accountId);
-        mockAccount.setBalance(1000L);
-        mockAccount.setAccountType(AccountType.CHECKING);
+        @Test
+        void withdraw_Success() {
+                // Arrange
+                Long accountId = 1L;
+                long withdrawAmount = 200L;
+                String idempotencyKey = "key-withdraw";
 
-        when(transactionRecordService.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
-        when(accountRepository.findById(accountId)).thenReturn(Optional.of(mockAccount));
+                Account mockAccount = new CheckingAccount();
+                mockAccount.setId(accountId);
+                mockAccount.setBalance(1000L);
+                mockAccount.setAccountType(AccountType.CHECKING);
 
-        TransactionRecord mockRecord = new TransactionRecord();
-        when(transactionMapper.toEntity(any(TransactionRequestDto.class), any(Account.class), eq(idempotencyKey),
-                eq(TransactionType.WITHDRAW)))
-                .thenReturn(mockRecord);
+                when(transactionRecordService.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
+                when(accountRepository.findById(accountId)).thenReturn(Optional.of(mockAccount));
 
-        TransactionResponseDto mockResponse = new TransactionResponseDto();
-        mockResponse.setStatus(TransactionStatus.SUCCESS);
-        mockResponse.setBalanceAfter(800L);
-        mockResponse.setMessage("Withdrawal successful");
+                TransactionRecord mockRecord = new TransactionRecord();
+                when(transactionMapper.toEntity(any(TransactionRequestDto.class), any(Account.class),
+                                eq(idempotencyKey),
+                                eq(TransactionType.WITHDRAW)))
+                                .thenReturn(mockRecord);
 
-        when(transactionMapper.toResponseDto(any(TransactionRecord.class), anyString()))
-                .thenReturn(mockResponse);
+                TransactionResponseDto mockResponse = new TransactionResponseDto();
+                mockResponse.setStatus(TransactionStatus.SUCCESS);
+                mockResponse.setBalanceAfter(800L);
+                mockResponse.setMessage("Withdrawal successful");
 
-        // Act
-        TransactionResponseDto response = accountService.withdraw(accountId, withdrawAmount, idempotencyKey);
+                when(transactionMapper.toResponseDto(any(TransactionRecord.class), anyString()))
+                                .thenReturn(mockResponse);
 
-        // Assert
-        assertEquals(TransactionStatus.SUCCESS, response.getStatus());
-        assertEquals(800L, response.getBalanceAfter());
-        assertEquals("Withdrawal successful", response.getMessage());
+                // Act
+                TransactionResponseDto response = accountService.withdraw(accountId, withdrawAmount, idempotencyKey);
 
-        verify(transactionRecordService, times(1)).save(any(TransactionRecord.class));
+                // Assert
+                assertEquals(TransactionStatus.SUCCESS, response.getStatus());
+                assertEquals(800L, response.getBalanceAfter());
+                assertEquals("Withdrawal successful", response.getMessage());
 
-    }
+                verify(transactionRecordService, times(1)).save(any(TransactionRecord.class));
+
+        }
 
 }

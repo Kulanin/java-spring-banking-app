@@ -1,6 +1,8 @@
 
 package com.demo.account;
 
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -11,7 +13,11 @@ import org.springframework.stereotype.Service;
 
 import com.demo.account.dto.TransactionRequestDto;
 import com.demo.audit.AuditService;
+import com.demo.events.WithdrawalCompletedEvent;
+import com.demo.outbox.OutboxEvent;
+import com.demo.outbox.OutboxEventRepository;
 import com.demo.pdf.PdfGenerationService;
+import com.demo.rabbitmq.RabbitMQConfig;
 import com.demo.transaction.TransactionMapper;
 import com.demo.transaction.TransactionRecord;
 import com.demo.transaction.TransactionRecordService;
@@ -19,6 +25,8 @@ import com.demo.transaction.TransactionType;
 import com.demo.transaction.dto.TransactionResponseDto;
 import com.demo.user.User;
 import com.demo.user.UserRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -39,10 +47,13 @@ public class AccountService {
     final private AuditService auditService;
     final private TransactionMapper transactionMapper;
     final private PdfGenerationService pdfGenerationService;
+    private final ObjectMapper objectMapper;
+    private final OutboxEventRepository outboxEventRepository;
 
     public AccountService(UserRepository userRepository, AccountRepository accountRepository,
             TransactionRecordService transactionRecordService, AccountFactory accountFactory,
-            AuditService auditService, TransactionMapper transactionMapper, PdfGenerationService pdfGenerationService) {
+            AuditService auditService, TransactionMapper transactionMapper, PdfGenerationService pdfGenerationService,
+            ObjectMapper objectMapper, OutboxEventRepository outboxEventRepository) {
         this.userRepository = userRepository;
         this.accountRepository = accountRepository;
         this.transactionRecordService = transactionRecordService;
@@ -50,10 +61,13 @@ public class AccountService {
         this.auditService = auditService;
         this.transactionMapper = transactionMapper;
         this.pdfGenerationService = pdfGenerationService;
+        this.objectMapper = objectMapper;
+        this.outboxEventRepository = outboxEventRepository;
     }
 
     @Transactional
-    public Account createAccountForUser(Long userId, AccountType accountType, LocalDate maturityDate,
+    public Account createAccountForUser(String idempotencyKey, Long userId, AccountType accountType,
+            LocalDate maturityDate,
             String accountName) {
 
         User user = userRepository.findById(userId)
@@ -73,7 +87,7 @@ public class AccountService {
         user.addAccount(account);
 
         userRepository.save(user);
-        auditService.logAction("test-user-c", "CREATE-ACCOUNT",
+        auditService.logAction(idempotencyKey, "test-user-c", "CREATE-ACCOUNT",
                 "Account name : " + accountName + " created successfullly");
 
         return account;
@@ -95,7 +109,7 @@ public class AccountService {
         if (existingTransaction.isPresent()) {
 
             TransactionRecord existing = existingTransaction.get();
-            auditService.logAction("test-user-d", "DEPOSIT",
+            auditService.logAction(idempotencyKey, "test-user-d", "DEPOSIT",
                     "Successfully deposited " + amount + " into account ID: " + accountId);
             return transactionMapper.toDuplicateResponse(existing);
         }
@@ -109,7 +123,7 @@ public class AccountService {
                 TransactionType.DEPOSIT);
 
         transactionRecordService.save(record);
-        auditService.logAction("test-user-d", "DEPOSIT",
+        auditService.logAction(idempotencyKey, "test-user-d", "DEPOSIT",
                 "Successfully deposited " + amount + " into account ID: " + accountId);
 
         return transactionMapper.toResponseDto(record, "Cash deposited successfully");
@@ -120,14 +134,8 @@ public class AccountService {
 
         Optional<TransactionRecord> existingTransaction = transactionRecordService.findByIdempotencyKey(idempotencyKey);
         if (existingTransaction.isPresent()) {
-
             TransactionRecord existing = existingTransaction.get();
-            auditService.logAction(
-                    "test-user-w",
-                    "WITHDRAWAL",
-                    "Successfully withdrew " + amount + " from account ID: " + accountId);
             return transactionMapper.toDuplicateResponse(existing);
-
         }
         Account account = getAccount(accountId);
 
@@ -141,10 +149,25 @@ public class AccountService {
 
         transactionRecordService.save(record);
 
-        auditService.logAction(
-                "test-user-w",
-                "WITHDRAWAL",
-                "Successfully withdrew " + amount + " from account ID: " + accountId);
+        WithdrawalCompletedEvent event = new WithdrawalCompletedEvent(
+                accountId,
+                BigDecimal.valueOf(amount),
+                idempotencyKey,
+                String.valueOf(record.getId()),
+                Instant.now());
+
+        OutboxEvent outboxEvent = new OutboxEvent();
+        outboxEvent.setExchange(RabbitMQConfig.TX_EXCHANGE);
+        outboxEvent.setRoutingKey(RabbitMQConfig.TX_WITHDRAWAL_KEY);
+        outboxEvent.setStatus("PENDING");
+        outboxEvent.setCreatedAt(Instant.now());
+        try {
+            outboxEvent.setPayload(objectMapper.writeValueAsString(event));
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to serialize withdrawal event", e);
+        }
+
+        outboxEventRepository.save(outboxEvent);
         return transactionMapper.toResponseDto(record, "Cash withdrawal successful");
     }
 
