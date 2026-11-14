@@ -9,7 +9,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.demo.events.WithdrawalCompletedEvent;
+import com.demo.events.TransactionCompletedEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.Data;
@@ -21,16 +21,16 @@ public class OutboxPublisher {
     private final OutboxEventRepository outboxRepo;
     private final ObjectMapper objectMapper;
 
-    @Scheduled(fixedDelay = 1000)
+    @Scheduled(fixedDelay = 20000) // i want to stay within free compute on Aiven
     @Transactional
     public void publishPendingEvents() {
         List<OutboxEvent> events = outboxRepo.findPendingEvents(PageRequest.of(0, 100));
         for (OutboxEvent event : events) {
             try {
 
-                WithdrawalCompletedEvent withdrawalEvent = objectMapper.readValue(
+                TransactionCompletedEvent withdrawalEvent = objectMapper.readValue(
                         event.getPayload(),
-                        WithdrawalCompletedEvent.class);
+                        TransactionCompletedEvent.class);
                 rabbitTemplate.convertAndSend(
                         event.getExchange(),
                         event.getRoutingKey(),

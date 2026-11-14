@@ -3,7 +3,7 @@ GET http://localhost:8080/api/v1/users?page=0&size=10&sortBy=name&sortDirection=
 Content-Type: application/json
 
 ### Get all user details
-GET http://localhost:8080/api/v1/users/1
+GET http://localhost:8080/api/v1/users/5
 Content-Type: application/json
 
 ### Test POST request
@@ -18,7 +18,7 @@ Content-Type: application/json
 
 
 ### Test Post request
-POST http://localhost:8080/api/v1/accounts/user/11
+POST http://localhost:8080/api/v1/accounts/user/3
 Content-Type: application/json
 Accept: application/json
 
@@ -32,7 +32,7 @@ POST http://localhost:8080/api/v1/accounts/user/1?accountNumber=12345&accountTyp
 
 
 ### Retrieve the account you just created
-GET http://localhost:8080/api/v1/accounts/1
+GET http://localhost:8080/api/v1/accounts/3
 
 ### Retrieve the account you just created
 GET http://localhost:8080/api/v1/accounts
@@ -70,7 +70,7 @@ Idempotency-Key: 7b9b1e5a-2b3c-4d5e-af6g-ouuuttt
 }
 
 ### get statement
-GET http://localhost:8080/api/v1/accounts/statement/2
+GET http://localhost:8080/api/v1/accounts/statement/2?page=1&size=40&sortBy=createdAt&sortDirection=DESC
 
 ### download statement
 GET http://localhost:8080/v1/api/accounts/download/2

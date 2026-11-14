@@ -23,3 +23,4 @@ mvnw.cmd
 .classpath
 .project
 .env
+.env.*

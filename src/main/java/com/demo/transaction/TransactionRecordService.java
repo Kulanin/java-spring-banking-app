@@ -1,14 +1,13 @@
 package com.demo.transaction;
 
-import java.util.List;
+import java.time.LocalDate;
 import java.util.Optional;
-import java.util.stream.Collectors;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
-
+import org.springframework.transaction.annotation.Transactional;
 import com.demo.transaction.dto.TransactionStatementDto;
-
-import jakarta.transaction.Transactional;
 
 @Service
 @Transactional
@@ -32,19 +31,24 @@ public class TransactionRecordService {
         return transactionRecordRepository.findByIdempotencyKey(key);
     }
 
-    @Transactional()
-    public List<TransactionStatementDto> getStatement(Long accountId) {
-        List<TransactionRecord> records = transactionRecordRepository.findByAccount_Id(accountId);
+    @Transactional(readOnly = true)
+    public Page<TransactionStatementDto> getTransactions(
+            Long accountId,
+            TransactionType type,
+            LocalDate startDate,
+            LocalDate endDate,
+            Pageable pageable) {
+        Specification<TransactionRecord> spec = TransactionSpecification.filterBy(
+                accountId, type, startDate, endDate);
 
-        return records.stream()
+        return transactionRecordRepository.findAll(spec, pageable)
                 .map(record -> new TransactionStatementDto(
                         record.getId(),
                         record.getAmount(),
                         record.getBalanceAfter(),
                         record.getCreatedAt(),
                         record.getType(),
-                        record.getAccountName()))
-                .collect(Collectors.toList());
+                        record.getAccountName()));
     }
 
 }

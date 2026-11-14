@@ -1,8 +1,6 @@
 
 package com.demo.account;
 
-import java.math.BigDecimal;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -13,9 +11,7 @@ import org.springframework.stereotype.Service;
 
 import com.demo.account.dto.TransactionRequestDto;
 import com.demo.audit.AuditService;
-import com.demo.events.WithdrawalCompletedEvent;
-import com.demo.outbox.OutboxEvent;
-import com.demo.outbox.OutboxEventRepository;
+import com.demo.outbox.OutboxService;
 import com.demo.pdf.PdfGenerationService;
 import com.demo.rabbitmq.RabbitMQConfig;
 import com.demo.transaction.TransactionMapper;
@@ -25,11 +21,10 @@ import com.demo.transaction.TransactionType;
 import com.demo.transaction.dto.TransactionResponseDto;
 import com.demo.user.User;
 import com.demo.user.UserRepository;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
@@ -47,13 +42,12 @@ public class AccountService {
     final private AuditService auditService;
     final private TransactionMapper transactionMapper;
     final private PdfGenerationService pdfGenerationService;
-    private final ObjectMapper objectMapper;
-    private final OutboxEventRepository outboxEventRepository;
+    private final OutboxService outboxService;
 
     public AccountService(UserRepository userRepository, AccountRepository accountRepository,
             TransactionRecordService transactionRecordService, AccountFactory accountFactory,
             AuditService auditService, TransactionMapper transactionMapper, PdfGenerationService pdfGenerationService,
-            ObjectMapper objectMapper, OutboxEventRepository outboxEventRepository) {
+            OutboxService outboxService) {
         this.userRepository = userRepository;
         this.accountRepository = accountRepository;
         this.transactionRecordService = transactionRecordService;
@@ -61,8 +55,8 @@ public class AccountService {
         this.auditService = auditService;
         this.transactionMapper = transactionMapper;
         this.pdfGenerationService = pdfGenerationService;
-        this.objectMapper = objectMapper;
-        this.outboxEventRepository = outboxEventRepository;
+        this.outboxService = outboxService;
+
     }
 
     @Transactional
@@ -93,9 +87,16 @@ public class AccountService {
         return account;
     }
 
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Account getAccountForUpdate(Long accountId) {
+        return accountRepository.findByIdForUpdate(accountId)
+                .orElseThrow(() -> new RuntimeException("Account not found"));
+    }
+
     @Transactional(readOnly = true)
-    public Account getAccount(Long accountNumber) {
-        return accountRepository.findById(accountNumber).orElseThrow(() -> new RuntimeException("Account not found"));
+    public Account getAccount(Long accountId) {
+        return accountRepository.findById(accountId)
+                .orElseThrow(() -> new RuntimeException("Account not found"));
     }
 
     public List<Account> findAll() {
@@ -107,13 +108,10 @@ public class AccountService {
 
         Optional<TransactionRecord> existingTransaction = transactionRecordService.findByIdempotencyKey(idempotencyKey);
         if (existingTransaction.isPresent()) {
-
             TransactionRecord existing = existingTransaction.get();
-            auditService.logAction(idempotencyKey, "test-user-d", "DEPOSIT",
-                    "Successfully deposited " + amount + " into account ID: " + accountId);
             return transactionMapper.toDuplicateResponse(existing);
         }
-        Account account = getAccount(accountId);
+        Account account = getAccountForUpdate(accountId);
         account.deposit(amount);
 
         TransactionRecord record = transactionMapper.toEntity(
@@ -123,8 +121,9 @@ public class AccountService {
                 TransactionType.DEPOSIT);
 
         transactionRecordService.save(record);
-        auditService.logAction(idempotencyKey, "test-user-d", "DEPOSIT",
-                "Successfully deposited " + amount + " into account ID: " + accountId);
+
+        outboxService.stageTransactionEvent(accountId, amount, TransactionType.DEPOSIT, idempotencyKey, record.getId(),
+                RabbitMQConfig.TX_DEPOSIT_KEY);
 
         return transactionMapper.toResponseDto(record, "Cash deposited successfully");
     }
@@ -137,7 +136,7 @@ public class AccountService {
             TransactionRecord existing = existingTransaction.get();
             return transactionMapper.toDuplicateResponse(existing);
         }
-        Account account = getAccount(accountId);
+        Account account = getAccountForUpdate(accountId);
 
         account.withdraw(amount);
 
@@ -148,26 +147,9 @@ public class AccountService {
                 TransactionType.WITHDRAW);
 
         transactionRecordService.save(record);
+        outboxService.stageTransactionEvent(accountId, amount, TransactionType.WITHDRAW, idempotencyKey, record.getId(),
+                RabbitMQConfig.TX_WITHDRAWAL_KEY);
 
-        WithdrawalCompletedEvent event = new WithdrawalCompletedEvent(
-                accountId,
-                BigDecimal.valueOf(amount),
-                idempotencyKey,
-                String.valueOf(record.getId()),
-                Instant.now());
-
-        OutboxEvent outboxEvent = new OutboxEvent();
-        outboxEvent.setExchange(RabbitMQConfig.TX_EXCHANGE);
-        outboxEvent.setRoutingKey(RabbitMQConfig.TX_WITHDRAWAL_KEY);
-        outboxEvent.setStatus("PENDING");
-        outboxEvent.setCreatedAt(Instant.now());
-        try {
-            outboxEvent.setPayload(objectMapper.writeValueAsString(event));
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to serialize withdrawal event", e);
-        }
-
-        outboxEventRepository.save(outboxEvent);
         return transactionMapper.toResponseDto(record, "Cash withdrawal successful");
     }
 

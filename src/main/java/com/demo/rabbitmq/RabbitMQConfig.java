@@ -16,20 +16,18 @@ import org.springframework.amqp.core.AcknowledgeMode;
 @Configuration
 public class RabbitMQConfig {
 
-    // === EXCHANGES ===
     public static final String TX_EXCHANGE = "banking.tx.exchange";
     public static final String DLX_EXCHANGE = "banking.dlx.exchange";
 
-    // === QUEUES ===
     public static final String AUDIT_QUEUE = "banking.audit.queue";
     public static final String NOTIFICATION_QUEUE = "banking.notification.queue";
     public static final String AUDIT_DLQ = "banking.audit.dlq";
 
-    // === ROUTING KEYS ===
     public static final String TX_WITHDRAWAL_KEY = "tx.withdrawal.completed";
     public static final String TX_DEPOSIT_KEY = "tx.deposit.completed";
+    public static final String TX_TRANSFER_OUT_KEY = "tx.transfer.out.completed";
+    public static final String TX_TRANSFER_IN_KEY = "tx.transfer.in.completed";
 
-    // --- Dead Letter Infrastructure (shared across all services) ---
     @Bean
     public DirectExchange dlxExchange() {
         return new DirectExchange(DLX_EXCHANGE);
@@ -45,13 +43,11 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(auditDlq()).to(dlxExchange()).with("audit.failed");
     }
 
-    // --- Main Exchange ---
     @Bean
     public TopicExchange txExchange() {
         return new TopicExchange(TX_EXCHANGE);
     }
 
-    // --- Audit Queue with DLX configured ---
     @Bean
     public Queue auditQueue() {
         return QueueBuilder.durable(AUDIT_QUEUE)
@@ -65,10 +61,9 @@ public class RabbitMQConfig {
     public Binding auditBinding() {
         return BindingBuilder.bind(auditQueue())
                 .to(txExchange())
-                .with("tx.#.completed"); // Topic wildcard: all completed transactions
+                .with("tx.#.completed");
     }
 
-    // --- Notification Queue ---
     @Bean
     public Queue notificationQueue() {
         return QueueBuilder.durable(NOTIFICATION_QUEUE)
@@ -80,16 +75,14 @@ public class RabbitMQConfig {
     public Binding notificationBinding() {
         return BindingBuilder.bind(notificationQueue())
                 .to(txExchange())
-                .with("tx.withdrawal.completed"); // Only withdrawals trigger notifications
+                .with("tx.withdrawal.completed");
     }
 
-    // --- JSON Message Converter (critical for type safety) ---
     @Bean
     public Jackson2JsonMessageConverter jsonMessageConverter() {
         return new Jackson2JsonMessageConverter();
     }
 
-    // --- Listener Container Factory (shared by ALL @RabbitListeners) ---
     @Bean
     public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
             ConnectionFactory connectionFactory,
@@ -98,10 +91,10 @@ public class RabbitMQConfig {
         factory.setConnectionFactory(connectionFactory);
         factory.setMessageConverter(converter);
         factory.setAcknowledgeMode(AcknowledgeMode.MANUAL);
-        factory.setConcurrentConsumers(3); // Start with 3 consumers
-        factory.setMaxConcurrentConsumers(10); // Scale up to 10 under load
-        factory.setPrefetchCount(10); // Fair dispatch: max 10 unacked per consumer
-        factory.setDefaultRequeueRejected(false); // Don't requeue business failures (send to DLQ)
+        factory.setConcurrentConsumers(3);
+        factory.setMaxConcurrentConsumers(10);
+        factory.setPrefetchCount(10);
+        factory.setDefaultRequeueRejected(false);
         return factory;
     }
 }
