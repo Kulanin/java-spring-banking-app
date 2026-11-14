@@ -1,6 +1,6 @@
 # Security Notice
 
-This project is a **demo banking simulator**. Authentication and
+This project is a **bankingsimulator banking simulator**. Authentication and
 authorization are intentionally omitted so that any frontend client can
 exercise the full API without a token flow.
 
