@@ -1,5 +1,7 @@
 package com.demo.user;
 
+import java.util.Set;
+
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +27,8 @@ public class UserController {
 
     private final UserService userService;
     private final UserMapper userMapper;
+    private static final Set<String> ALLOWED_SORTS = Set.of(
+            "id", "name", "email");
 
     UserController(UserService userService, UserMapper userMapper) {
         this.userMapper = userMapper;
@@ -34,7 +38,7 @@ public class UserController {
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponseDto<UserResponseDto>>> getUsers(
             @Valid PageRequestDto pageRequest) {
-        Page<User> userPage = userService.findAll(pageRequest.toPageable());
+        Page<User> userPage = userService.findAll(pageRequest.toPageable(ALLOWED_SORTS));
         PageResponseDto<UserResponseDto> pageResponse = userMapper.toPageResponseDto(userPage);
         return ResponseEntity.ok(ApiResponse.success(pageResponse, "Users retrieved successfully"));
     }

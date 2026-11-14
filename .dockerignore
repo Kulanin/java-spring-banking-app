@@ -1,3 +1,7 @@
-node_modules
+target/
 .env
+.env.*
 .git
+.idea
+.vscode
+node_modules

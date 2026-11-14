@@ -1,8 +1,11 @@
 package com.demo.account;
 
 import java.math.BigDecimal;
-import java.time.Instant;
+
 import java.time.LocalDateTime;
+
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import com.demo.exceptions.InvalidAmountException;
 import com.demo.user.User;
@@ -11,6 +14,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorColumn;
 import jakarta.persistence.DiscriminatorType;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
@@ -21,6 +25,7 @@ import jakarta.persistence.InheritanceType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
+
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.EqualsAndHashCode;
@@ -32,6 +37,7 @@ import jakarta.persistence.GenerationType;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 
 @Entity
+@EntityListeners(AuditingEntityListener.class)
 @Getter
 @Setter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
@@ -67,6 +73,7 @@ public abstract class Account implements Depositable {
     private AccountStatus status;
 
     private LocalDateTime createdAt;
+    @LastModifiedDate
     private LocalDateTime updatedAt;
 
     // Reference to user feature
@@ -80,7 +87,6 @@ public abstract class Account implements Depositable {
         if (amount <= 0)
             throw new InvalidAmountException("Invalid amount :" + amount);
         this.balance += amount;
-        this.updatedAt = LocalDateTime.now();
     }
 
     void withdraw(long amount) {
@@ -96,8 +102,6 @@ public abstract class Account implements Depositable {
     protected void onCreate() {
         LocalDateTime now = LocalDateTime.now();
         this.createdAt = now;
-        this.updatedAt = now;
-
         if (this.accountNumber == null) {
             this.accountNumber = generateAccountNumber();
         }

@@ -1,8 +1,12 @@
 package com.demo.account;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -12,13 +16,17 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.demo.account.dto.AccountCreationRequestDto;
 import com.demo.account.dto.AccountResponseDto;
 import com.demo.account.dto.TransactionRequestDto;
 import com.demo.common.ApiResponse;
+import com.demo.common.PageRequestDto;
+import com.demo.common.PageResponseDto;
 import com.demo.transaction.TransactionRecordService;
+import com.demo.transaction.TransactionType;
 import com.demo.transaction.dto.TransactionResponseDto;
 import com.demo.transaction.dto.TransactionStatementDto;
 import com.demo.transaction.dto.TransactionStatus;
@@ -27,16 +35,6 @@ import com.demo.transaction.dto.TransferRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
-
-/**
- * REST controller for account operations.
- *
- * <p>
- * <strong>Security note:</strong> authentication and authorization are
- * intentionally NOT enforced in this demo build so that any frontend can
- * exercise the endpoints freely. See {@code SECURITY.md} for the planned
- * hardening. Do not expose this build publicly.
- */
 
 @RestController
 @RequestMapping("/api/v1/accounts")
@@ -47,6 +45,7 @@ public class AccountController {
     private final TransferService transferService;
     private final TransactionRecordService transactionRecordService;
     private final AccountMapper accountMapper;
+    private static final Set<String> ALLOWED_SORTS = Set.of("id", "createdAt", "amount", "type");
 
     public AccountController(AccountService accountService, TransferService transferService,
             TransactionRecordService transactionRecordService, AccountMapper accountMapper) {
@@ -128,9 +127,21 @@ public class AccountController {
     }
 
     @GetMapping("/statement/{accountId}")
-    public ResponseEntity<ApiResponse<List<TransactionStatementDto>>> getStatement(@PathVariable Long accountId) {
-        List<TransactionStatementDto> statementDtos = transactionRecordService.getStatement(accountId);
-        return ResponseEntity.ok(ApiResponse.success(statementDtos, "Statement retrieved successfully"));
+    public ResponseEntity<ApiResponse<PageResponseDto<TransactionStatementDto>>> getTransactions(
+            @PathVariable Long accountId,
+            @RequestParam(required = false) TransactionType type,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @Valid PageRequestDto pageRequest) {
+        Page<TransactionStatementDto> transactions = transactionRecordService.getTransactions(
+                accountId,
+                type,
+                startDate,
+                endDate,
+                pageRequest.toPageable(ALLOWED_SORTS));
+
+        return ResponseEntity.ok(
+                ApiResponse.success(PageResponseDto.from(transactions), "Statement retrieved successfully"));
     }
 
     @GetMapping("/download/{accountId}")

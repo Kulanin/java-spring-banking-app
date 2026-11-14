@@ -6,7 +6,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.demo.account.dto.TransactionRequestDto;
-import com.demo.audit.AuditService;
+import com.demo.outbox.OutboxService;
+import com.demo.rabbitmq.RabbitMQConfig;
 import com.demo.transaction.TransactionMapper;
 import com.demo.transaction.TransactionRecord;
 import com.demo.transaction.TransactionRecordService;
@@ -18,20 +19,23 @@ public class TransferService {
 
         private final TransactionRecordService transactionRecordService;
         private final AccountService accountService;
-        private final AuditService auditService;
+        private final OutboxService outboxService;
         private final TransactionMapper transactionMapper;
 
         public TransferService(TransactionRecordService transactionRecordService, AccountService accountService,
-                        AuditService auditService, TransactionMapper transactionMapper) {
+                        OutboxService outboxService, TransactionMapper transactionMapper) {
                 this.transactionRecordService = transactionRecordService;
                 this.accountService = accountService;
-                this.auditService = auditService;
+                this.outboxService = outboxService;
                 this.transactionMapper = transactionMapper;
         }
 
         @Transactional
         public TransactionResponseDto transfer(Long sourceAccountId, Long targetAccountId, long amount,
                         String idempotencyKey) {
+                if (sourceAccountId.equals(targetAccountId)) {
+                        throw new IllegalArgumentException("Source and target accounts cannot be the same");
+                }
 
                 Optional<TransactionRecord> existingTransaction = transactionRecordService
                                 .findByIdempotencyKey(idempotencyKey + "-OUT");
@@ -39,23 +43,15 @@ public class TransferService {
                 if (existingTransaction.isPresent()) {
 
                         TransactionRecord existing = existingTransaction.get();
-                        auditService.logAction(idempotencyKey, "test-user-t", "TRANSFER",
-                                        "Funds alaredy transferred successfully " + amount
-                                                        + " from account ID: " + sourceAccountId + " to account ID: "
-                                                        + targetAccountId);
                         return transactionMapper.toDuplicateResponse(existing);
-                }
-
-                if (sourceAccountId.equals(targetAccountId)) {
-                        throw new IllegalArgumentException("Source and target accounts cannot be the same");
                 }
 
                 // Prevent deadlocks by ordering IDs (always lock lower ID first)
                 Long firstId = Math.min(sourceAccountId, targetAccountId);
                 Long secondId = Math.max(sourceAccountId, targetAccountId);
 
-                Account firstAccount = accountService.getAccount(firstId);
-                Account secondAccount = accountService.getAccount(secondId);
+                Account firstAccount = accountService.getAccountForUpdate(firstId);
+                Account secondAccount = accountService.getAccountForUpdate(secondId);
 
                 Account sourceAccount = (sourceAccountId.equals(firstId)) ? firstAccount : secondAccount;
                 Account targetAccount = (targetAccountId.equals(firstId)) ? firstAccount : secondAccount;
@@ -78,10 +74,22 @@ public class TransferService {
 
                 transactionRecordService.save(sourceRecord);
                 transactionRecordService.save(targetRecord);
-                auditService.logAction(idempotencyKey, "test-user-t", "TRANSFER",
-                                "Funds transferred successfully " + amount
-                                                + " from account ID: " + sourceAccountId + " to account ID: "
-                                                + targetAccountId);
+
+                outboxService.stageTransactionEvent(
+                                sourceAccountId,
+                                amount,
+                                TransactionType.TRANSFER_OUT,
+                                idempotencyKey + "-OUT",
+                                sourceRecord.getId(),
+                                RabbitMQConfig.TX_TRANSFER_OUT_KEY);
+
+                outboxService.stageTransactionEvent(
+                                targetAccountId,
+                                amount,
+                                TransactionType.TRANSFER_IN,
+                                idempotencyKey + "-IN",
+                                targetRecord.getId(),
+                                RabbitMQConfig.TX_TRANSFER_IN_KEY);
 
                 return transactionMapper.toResponseDto(sourceRecord, "Funds transferred successfully");
 
